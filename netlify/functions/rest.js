@@ -1,7 +1,6 @@
 exports.handler = async (event) => {
   const token = process.env.VITE_MAGENTO_TOKEN;
-  // path: e.g. "V1/products"
-  const restPath = event.path.replace("/.netlify/functions/rest/", "");
+  const restPath = event.path.replace(/^\/rest\//, "");
   const qs = event.rawQuery ? "?" + event.rawQuery : "";
   const url = `https://www.editbynine.com/rest/${restPath}${qs}`;
 

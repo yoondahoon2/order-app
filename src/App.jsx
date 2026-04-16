@@ -181,7 +181,7 @@ export default function App() {
     const header = `Hello! 👋%0A%0AI'd like to place an order:%0A%0A`;
     const body = lines.map(l => `📦 ${l}`).join("%0A");
     const footer = `%0A%0AThank you!`;
-    window.open(`https://wa.me/?text=${header}${body}${footer}`, "_blank");
+    window.open(`https://wa.me/12138003519?text=${header}${body}${footer}`, "_blank");
   };
 
   // 라이트박스 내비게이션
@@ -190,19 +190,27 @@ export default function App() {
   const lbNext = () => setLightbox((l) => ({ ...l, imgIdx: (l.imgIdx + 1) % lbImages.length }));
 
   return (
-    <div style={{ maxWidth: 480, margin: "0 auto", padding: 16 }}>
-      {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-        <h2 style={{ margin: 0 }}>Order</h2>
-        <div>Cart {cartCount}</div>
+    <div style={{ maxWidth: 480, margin: "0 auto", background: "#f0f0f0", minHeight: "100vh" }}>
+      {/* 고정 헤더 */}
+      <div style={{
+        position: "sticky", top: 0, zIndex: 100,
+        background: "#fff", padding: "10px 16px",
+        borderBottom: "1px solid #eee",
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+      }}>
+        <h2 style={{ margin: 0, fontSize: 18, color: "#111" }}>Edit By Nine — Order</h2>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 700, color: "#111" }}>
+          🛒 {cartCount}
+        </div>
       </div>
 
+      <div style={{ padding: "12px 16px" }}>
       {/* Search */}
       <input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search style #"
-        style={{ width: "100%", height: 38, marginBottom: 12, boxSizing: "border-box", padding: "0 8px", border: "1px solid #ccc", borderRadius: 6 }}
+        style={{ width: "100%", height: 38, marginBottom: 12, boxSizing: "border-box", padding: "0 8px", border: "1px solid #ccc", borderRadius: 6, background: "#fff", color: "#111" }}
       />
 
       {/* Products */}
@@ -213,7 +221,7 @@ export default function App() {
           const mainImage = images[0] || "";
 
           return (
-            <div key={p.id} style={{ border: "1px solid #ddd", borderRadius: 8, overflow: "hidden" }}>
+            <div key={p.id} style={{ border: "1px solid #ddd", borderRadius: 8, overflow: "hidden", background: "#fff" }}>
               {/* 메인 이미지 - 클릭하면 라이트박스 */}
               <div
                 style={{ background: "#f5f5f5", cursor: mainImage ? "pointer" : "default" }}
@@ -250,9 +258,9 @@ export default function App() {
                 </div>
               )}
 
-              <div style={{ padding: "10px 12px" }}>
+              <div style={{ padding: "10px 12px", background: "#fff" }}>
                 {/* SKU + 이름 */}
-                <div style={{ fontWeight: 700, fontSize: 17 }}>{p.id}</div>
+                <div style={{ fontWeight: 700, fontSize: 17, color: "#111" }}>{p.id}</div>
                 <div style={{ fontSize: 13, color: "#444", marginBottom: 8 }}>{p.name}</div>
 
                 {/* 가격(왼쪽) + PACK(오른쪽) */}
@@ -357,6 +365,7 @@ export default function App() {
           )}
         </div>
       )}
+    </div>
     </div>
   );
 }

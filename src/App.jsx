@@ -436,7 +436,8 @@ export default function App() {
                   const [sku, color] = key.split("|||");
                   const product = products.find((p) => p.id === sku);
                   const pricePerPc = product ? product.price / product.piecesPerPack : 0;
-                  const subtotal = pricePerPc * qty;
+                  const packPrice = product ? product.price : 0;
+                  const subtotal = packPrice * qty; // qty = 팩 수량
                   return (
                     <div key={key} style={{ display: "flex", alignItems: "center", padding: "10px 16px", borderBottom: "1px solid #f5f5f5", gap: 12 }}>
                       <div style={{ flex: 1 }}>
@@ -444,7 +445,7 @@ export default function App() {
                         {color && <div style={{ fontSize: 12, color: "#666" }}>{color}</div>}
                         {product && pricePerPc > 0 && (
                           <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>
-                            ${pricePerPc.toFixed(2)}/pc × {qty} = <span style={{ fontWeight: 700, color: "#111" }}>${subtotal.toFixed(2)}</span>
+                            ${pricePerPc.toFixed(2)}/pc × {qty} {qty === 1 ? "pack" : "packs"} = <span style={{ fontWeight: 700, color: "#111" }}>${subtotal.toFixed(2)}</span>
                           </div>
                         )}
                       </div>
@@ -462,11 +463,17 @@ export default function App() {
               const total = Object.entries(cart).reduce((sum, [key, qty]) => {
                 const [sku] = key.split("|||");
                 const product = products.find((p) => p.id === sku);
-                return sum + (product ? (product.price / product.piecesPerPack) * qty : 0);
+                return sum + (product ? product.price * qty : 0); // pack price × pack qty
+              }, 0);
+              const totalPacks = cartCount;
+              const totalPcs = Object.entries(cart).reduce((sum, [key, qty]) => {
+                const [sku] = key.split("|||");
+                const product = products.find((p) => p.id === sku);
+                return sum + (product ? product.piecesPerPack * qty : qty);
               }, 0);
               return (
                 <div style={{ padding: "12px 16px", borderTop: "2px solid #eee", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontWeight: 600, fontSize: 14, color: "#555" }}>Total ({cartCount} pcs)</span>
+                  <span style={{ fontWeight: 600, fontSize: 14, color: "#555" }}>Total ({totalPacks} {totalPacks === 1 ? "pack" : "packs"} / {totalPcs} pcs)</span>
                   <span style={{ fontWeight: 700, fontSize: 17, color: "#111" }}>${total.toFixed(2)}</span>
                 </div>
               );

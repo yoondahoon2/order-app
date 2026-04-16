@@ -1,0 +1,3 @@
+/graphql  https://www.editbynine.com/graphql  200!
+/rest/*   https://www.editbynine.com/rest/:splat  200!
+/*        /index.html  200

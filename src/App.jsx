@@ -21,9 +21,12 @@ export default function App() {
         const TOKEN = import.meta.env.VITE_MAGENTO_TOKEN;
         const BASE = "https://www.editbynine.com/media/catalog/product";
         const headers = { "Authorization": `Bearer ${TOKEN}` };
+        const IS_DEV = import.meta.env.DEV;
+        const GQL = IS_DEV ? "/graphql" : "/.netlify/functions/graphql";
+        const REST = IS_DEV ? "/rest" : "/.netlify/functions/rest";
 
         // 1. GraphQL: new-in 카테고리 상품 (이름/가격/재고)
-        const gqlRes = await fetch(`/graphql`, {
+        const gqlRes = await fetch(GQL, {
           method: "POST",
           headers: { ...headers, "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -47,7 +50,7 @@ export default function App() {
         // 2. REST: 그룹 상품 일괄 조회 (product_links + custom_attributes)
         const groupedSkuValue = groupedItems.map((p) => p.sku).join(",");
         const groupedRestRes = await fetch(
-          `/rest/V1/products?searchCriteria[pageSize]=100&searchCriteria[filterGroups][0][filters][0][field]=sku&searchCriteria[filterGroups][0][filters][0][value]=${groupedSkuValue}&searchCriteria[filterGroups][0][filters][0][conditionType]=in`,
+          `${REST}/V1/products?searchCriteria[pageSize]=100&searchCriteria[filterGroups][0][filters][0][field]=sku&searchCriteria[filterGroups][0][filters][0][value]=${groupedSkuValue}&searchCriteria[filterGroups][0][filters][0][conditionType]=in`,
           { headers }
         );
         const groupedRestData = await groupedRestRes.json();
@@ -76,7 +79,7 @@ export default function App() {
         const allLinkedSkus = [...new Set(Object.values(linksMap).flat())];
         const skuValue = allLinkedSkus.join(",");
         const simpleRes = await fetch(
-          `/rest/V1/products?searchCriteria[pageSize]=500&searchCriteria[filterGroups][0][filters][0][field]=sku&searchCriteria[filterGroups][0][filters][0][value]=${skuValue}&searchCriteria[filterGroups][0][filters][0][conditionType]=in`,
+          `${REST}/V1/products?searchCriteria[pageSize]=500&searchCriteria[filterGroups][0][filters][0][field]=sku&searchCriteria[filterGroups][0][filters][0][value]=${skuValue}&searchCriteria[filterGroups][0][filters][0][conditionType]=in`,
           { headers }
         );
         const simpleData = await simpleRes.json();

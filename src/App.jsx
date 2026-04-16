@@ -1,10 +1,17 @@
 import React, { useMemo, useState, useEffect } from "react";
 
+const RECIPIENTS = [
+  { name: "Kevin",  number: "12138002184", avatar: "/kevin.png" },
+  { name: "Laura",  number: "12138003519", avatar: "/laura.png" },
+  { name: "Kathie", number: "12137008908", avatar: "/kathie.png" },
+];
+
 export default function App() {
   const [products, setProducts] = useState([]);
   const [query, setQuery] = useState("");
   const [selectedColors, setSelectedColors] = useState({});
   const [lightbox, setLightbox] = useState(null); // { productId, imgIdx }
+  const [showRecipients, setShowRecipients] = useState(false);
 
   const [cart, setCart] = useState(() => {
     try {
@@ -166,7 +173,7 @@ export default function App() {
   const getColorIdx = (id) => selectedColors[id] ?? 0;
   const getCurrentImages = (p) => p.colors[getColorIdx(p.id)]?.images || [];
 
-  const sendOrderToWhatsApp = () => {
+  const buildOrderLines = () => {
     const lines = [];
     products.forEach((p) => {
       p.colors.forEach((c) => {
@@ -177,11 +184,24 @@ export default function App() {
         lines.push(`${p.id} — ${p.name} × ${cart[cartKey(p.id, "")]}`);
       }
     });
-    if (lines.length === 0) { alert("먼저 상품을 담아줘"); return; }
+    return lines;
+  };
+
+  const sendOrderToWhatsApp = (recipient) => {
+    const lines = buildOrderLines();
+    if (lines.length === 0) return;
     const header = `Hello! 👋%0A%0AI'd like to place an order:%0A%0A`;
     const body = lines.map(l => `📦 ${l}`).join("%0A");
     const footer = `%0A%0AThank you!`;
-    window.open(`https://wa.me/12138003519?text=${header}${body}${footer}`, "_blank");
+    window.open(`https://wa.me/${recipient.number}?text=${header}${body}${footer}`, "_blank");
+    setCart({});
+    setShowRecipients(false);
+  };
+
+  const handleSendButton = () => {
+    const lines = buildOrderLines();
+    if (lines.length === 0) { alert("먼저 상품을 담아줘"); return; }
+    setShowRecipients(true);
   };
 
   // 라이트박스 내비게이션
@@ -198,7 +218,7 @@ export default function App() {
         borderBottom: "1px solid #eee",
         display: "flex", justifyContent: "space-between", alignItems: "center",
       }}>
-        <h2 style={{ margin: 0, fontSize: 18, color: "#111" }}>Edit By Nine — Order</h2>
+        <img src="/logo.png" alt="Edit By Nine" style={{ height: 36, objectFit: "contain" }} />
         <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 700, color: "#111" }}>
           🛒 {cartCount}
         </div>
@@ -326,12 +346,55 @@ export default function App() {
       {/* WhatsApp 버튼 */}
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "white", padding: 10, borderTop: "1px solid #eee" }}>
         <button
-          onClick={sendOrderToWhatsApp}
+          onClick={handleSendButton}
           style={{ width: "100%", height: 44, background: "#25D366", color: "white", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: 15 }}
         >
           Send Order via WhatsApp
         </button>
       </div>
+
+      {/* 수신자 선택 모달 */}
+      {showRecipients && (
+        <div
+          onClick={() => setShowRecipients(false)}
+          style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)",
+            display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#fff", borderRadius: 16, padding: "28px 24px",
+              width: 300, boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
+              display: "flex", flexDirection: "column", alignItems: "center",
+            }}
+          >
+            <img src="/logo.png" alt="Edit By Nine" style={{ height: 52, objectFit: "contain", marginBottom: 24 }} />
+            {RECIPIENTS.map((r) => (
+              <div
+                key={r.name}
+                onClick={() => sendOrderToWhatsApp(r)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 16,
+                  width: "100%", padding: "12px 8px", cursor: "pointer",
+                  borderRadius: 10, marginBottom: 4,
+                  transition: "background 0.15s",
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = "#f5f5f5"}
+                onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+              >
+                <img
+                  src={r.avatar}
+                  alt={r.name}
+                  style={{ width: 56, height: 56, borderRadius: "50%", objectFit: "cover", border: "2px solid #eee", flexShrink: 0 }}
+                />
+                <span style={{ fontWeight: 700, fontSize: 18, color: "#111", letterSpacing: 0.5 }}>{r.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 라이트박스 모달 */}
       {lightbox && (

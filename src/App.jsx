@@ -8,6 +8,7 @@ const RECIPIENTS = [
 
 export default function App() {
   const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [selectedColors, setSelectedColors] = useState({});
   const [lightbox, setLightbox] = useState(null); // { productId, imgIdx }
@@ -25,6 +26,19 @@ export default function App() {
 
   useEffect(() => {
     async function loadProducts() {
+      // 캐시 확인 (5분 TTL)
+      try {
+        const cached = localStorage.getItem("products_cache");
+        if (cached) {
+          const { data, ts } = JSON.parse(cached);
+          if (Date.now() - ts < 5 * 60 * 1000) {
+            setProducts(data);
+            setLoading(false);
+            return; // 캐시 유효 → API 스킵
+          }
+        }
+      } catch {}
+
       try {
         const TOKEN = import.meta.env.VITE_MAGENTO_TOKEN;
         const BASE = "https://www.editbynine.com/media/catalog/product";
@@ -142,8 +156,14 @@ export default function App() {
           });
 
         setProducts(mapped);
+        // 캐시 저장
+        try {
+          localStorage.setItem("products_cache", JSON.stringify({ data: mapped, ts: Date.now() }));
+        } catch {}
       } catch (err) {
         console.error("Magento load error:", err);
+      } finally {
+        setLoading(false);
       }
     }
     loadProducts();
@@ -244,6 +264,18 @@ export default function App() {
 
       {/* Products */}
       <div style={{ display: "grid", gap: 16, paddingBottom: 80 }}>
+        {loading && products.length === 0 && (
+          [1,2,3].map((i) => (
+            <div key={i} style={{ borderRadius: 8, overflow: "hidden", background: "#fff", border: "1px solid #ddd" }}>
+              <div style={{ height: 260, background: "linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.2s infinite" }} />
+              <div style={{ padding: "12px" }}>
+                <div style={{ height: 16, width: "40%", background: "#eee", borderRadius: 4, marginBottom: 8 }} />
+                <div style={{ height: 12, width: "70%", background: "#eee", borderRadius: 4, marginBottom: 8 }} />
+                <div style={{ height: 12, width: "30%", background: "#eee", borderRadius: 4 }} />
+              </div>
+            </div>
+          ))
+        )}
         {filtered.map((p) => {
           const colorIdx = getColorIdx(p.id);
           const images = getCurrentImages(p);

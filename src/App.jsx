@@ -12,6 +12,7 @@ export default function App() {
   const [selectedColors, setSelectedColors] = useState({});
   const [lightbox, setLightbox] = useState(null); // { productId, imgIdx }
   const [showRecipients, setShowRecipients] = useState(false);
+  const [showCart, setShowCart] = useState(false);
 
   const [cart, setCart] = useState(() => {
     try {
@@ -168,6 +169,11 @@ export default function App() {
     if (next[k] > 1) next[k] -= 1; else delete next[k];
     return next;
   });
+  const removeAll = (sku, color) => setCart((prev) => {
+    const next = { ...prev };
+    delete next[cartKey(sku, color)];
+    return next;
+  });
   const cartCount = Object.values(cart).reduce((a, b) => a + b, 0);
 
   const getColorIdx = (id) => selectedColors[id] ?? 0;
@@ -219,7 +225,10 @@ export default function App() {
         display: "flex", justifyContent: "space-between", alignItems: "center",
       }}>
         <img src="/logo.png" alt="Edit By Nine" style={{ height: 36, objectFit: "contain" }} />
-        <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 700, color: "#111" }}>
+        <div
+          onClick={() => setShowCart(true)}
+          style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 700, color: "#111", cursor: "pointer", padding: "4px 8px", borderRadius: 8, background: cartCount > 0 ? "#f0f0f0" : "transparent" }}
+        >
           🛒 {cartCount}
         </div>
       </div>
@@ -321,6 +330,7 @@ export default function App() {
                         {/* +/- 수량 조절 */}
                         {qty > 0 ? (
                           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <button onClick={() => removeAll(p.id, c.name)} style={{ width: 28, height: 28, borderRadius: 4, border: "1px solid #ffcccc", background: "#fff5f5", color: "#cc0000", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>×</button>
                             <button onClick={() => remove(p.id, c.name)} style={{ width: 28, height: 28, borderRadius: 4, border: "1px solid #ccc", background: "#fff", cursor: "pointer", fontWeight: 700 }}>−</button>
                             <span style={{ fontWeight: 700, minWidth: 20, textAlign: "center" }}>{qty}</span>
                             <button onClick={() => add(p.id, c.name)} style={{ width: 28, height: 28, borderRadius: 4, border: "1px solid #ccc", background: "#fff", cursor: "pointer", fontWeight: 700 }}>+</button>
@@ -352,6 +362,59 @@ export default function App() {
           Send Order via WhatsApp
         </button>
       </div>
+
+      {/* 카트 모달 */}
+      {showCart && (
+        <div
+          onClick={() => setShowCart(false)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 300, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: "#fff", borderRadius: "16px 16px 0 0", width: "100%", maxWidth: 480, maxHeight: "70vh", display: "flex", flexDirection: "column" }}
+          >
+            {/* 헤더 */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 16px 12px", borderBottom: "1px solid #eee" }}>
+              <span style={{ fontWeight: 700, fontSize: 16, color: "#111" }}>Cart ({cartCount})</span>
+              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                {cartCount > 0 && (
+                  <button onClick={() => setCart({})} style={{ fontSize: 12, color: "#cc0000", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>
+                    Clear All
+                  </button>
+                )}
+                <button onClick={() => setShowCart(false)} style={{ fontSize: 22, background: "none", border: "none", cursor: "pointer", color: "#666", lineHeight: 1 }}>×</button>
+              </div>
+            </div>
+            {/* 아이템 목록 */}
+            <div style={{ overflowY: "auto", flex: 1, padding: "8px 0" }}>
+              {cartCount === 0 ? (
+                <div style={{ textAlign: "center", color: "#aaa", padding: 32 }}>카트가 비어있어요</div>
+              ) : (
+                Object.entries(cart).map(([key, qty]) => {
+                  const [sku, color] = key.split("|||");
+                  const product = products.find((p) => p.id === sku);
+                  return (
+                    <div key={key} style={{ display: "flex", alignItems: "center", padding: "10px 16px", borderBottom: "1px solid #f5f5f5", gap: 12 }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: "#111" }}>{sku}</div>
+                        {color && <div style={{ fontSize: 12, color: "#666" }}>{color}</div>}
+                        {product && <div style={{ fontSize: 12, color: "#999" }}>{product.name}</div>}
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontWeight: 700, fontSize: 15, minWidth: 24, textAlign: "center" }}>×{qty}</span>
+                        <button
+                          onClick={() => removeAll(sku, color)}
+                          style={{ width: 28, height: 28, borderRadius: 4, border: "1px solid #ffcccc", background: "#fff5f5", color: "#cc0000", cursor: "pointer", fontWeight: 700, fontSize: 16 }}
+                        >×</button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 수신자 선택 모달 */}
       {showRecipients && (

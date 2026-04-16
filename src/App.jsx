@@ -226,7 +226,7 @@ export default function App() {
 
   const handleSendButton = () => {
     const lines = buildOrderLines();
-    if (lines.length === 0) { alert("먼저 상품을 담아줘"); return; }
+    if (lines.length === 0) { alert("Please add items to your cart first."); return; }
     setShowRecipients(true);
   };
 
@@ -420,7 +420,7 @@ export default function App() {
             {/* 아이템 목록 */}
             <div style={{ overflowY: "auto", flex: 1, padding: "8px 0" }}>
               {cartCount === 0 ? (
-                <div style={{ textAlign: "center", color: "#aaa", padding: 32 }}>카트가 비어있어요</div>
+                <div style={{ textAlign: "center", color: "#aaa", padding: 32 }}>Your cart is empty</div>
               ) : (
                 Object.entries(cart).map(([key, qty]) => {
                   const [sku, color] = key.split("|||");

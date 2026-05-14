@@ -3,7 +3,7 @@ import React, { useMemo, useState, useEffect } from "react";
 const RECIPIENTS = [
   { name: "Kevin",  number: "12138002184", avatar: "/kevin.png" },
   { name: "Laura",  number: "12138003519", avatar: "/laura.png" },
-  { name: "Erick",  number: "12137008908", avatar: "/erick.png" },
+  { name: "Erika",  number: "12137008908", avatar: "/erika.png" },
 ];
 
 export default function App() {

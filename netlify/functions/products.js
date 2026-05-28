@@ -24,14 +24,9 @@ const QUERY = `
               }
             }
           }
-          metafields(identifiers: [
-            { namespace: "custom", key: "style_code" },
-            { namespace: "custom", key: "pack_size" },
-            { namespace: "custom", key: "prepack_ratio" },
-            { namespace: "custom", key: "pack_price" },
-            { namespace: "custom", key: "unit_price" },
-            { namespace: "custom", key: "preorder_date" }
-          ]) { namespace key value }
+          metafields(first: 30, namespace: "custom") {
+            edges { node { namespace key value } }
+          }
         }
       }
     }
@@ -44,7 +39,7 @@ function parseMoney(jsonStr) {
 
 function shape(node) {
   const mfMap = {};
-  (node.metafields || []).forEach((m) => { if (m) mfMap[m.key] = m.value; });
+  (node.metafields?.edges || []).forEach((e) => { if (e?.node) mfMap[e.node.key] = e.node.value; });
 
   const style = (mfMap.style_code || node.handle || node.title || "").toUpperCase().split(/[^A-Z0-9]/)[0];
 

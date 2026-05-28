@@ -4,14 +4,8 @@
   functions = "netlify/functions"
 
 [[redirects]]
-  from = "/graphql"
-  to = "/.netlify/functions/graphql"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/rest/*"
-  to = "/.netlify/functions/rest"
+  from = "/api/products"
+  to = "/.netlify/functions/products"
   status = 200
   force = true
 

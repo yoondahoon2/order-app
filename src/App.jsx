@@ -34,139 +34,21 @@ export default function App() {
           if (Date.now() - ts < 5 * 60 * 1000) {
             setProducts(data);
             setLoading(false);
-            return; // 캐시 유효 → API 스킵
+            return;
           }
         }
       } catch {}
 
       try {
-        const TOKEN = import.meta.env.VITE_MAGENTO_TOKEN;
-        const BASE = "https://www.editbynine.com/media/catalog/product";
-        const headers = { "Authorization": `Bearer ${TOKEN}` };
-        // 1. GraphQL: new-in 카테고리 상품 (이름/가격/재고)
-        const gqlRes = await fetch("/graphql", {
-          method: "POST",
-          headers: { ...headers, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            query: `query {
-              categoryList(filters: { url_key: { eq: "new-in" } }) {
-                products(pageSize: 100) {
-                  items {
-                    sku name stock_status
-                    price_range {
-                      minimum_price { regular_price { value currency } }
-                    }
-                  }
-                }
-              }
-            }`,
-          }),
-        });
-        const gqlData = await gqlRes.json();
-        const groupedItems = gqlData?.data?.categoryList?.[0]?.products?.items || [];
-
-        // 2. REST: 그룹 상품 일괄 조회 (product_links + custom_attributes)
-        const groupedSkuValue = groupedItems.map((p) => p.sku).join(",");
-        const groupedRestRes = await fetch(
-          `/rest/V1/products?searchCriteria[pageSize]=100&searchCriteria[filterGroups][0][filters][0][field]=sku&searchCriteria[filterGroups][0][filters][0][value]=${groupedSkuValue}&searchCriteria[filterGroups][0][filters][0][conditionType]=in`,
-          { headers }
-        );
-        const groupedRestData = await groupedRestRes.json();
-        const groupedRestItems = groupedRestData?.items || [];
-
-        // custom_attributes 확인용 로그 (첫 번째 상품)
-        if (groupedRestItems[0]) {
-          const attrMap = {};
-          groupedRestItems[0].custom_attributes?.forEach(a => { attrMap[a.attribute_code] = a.value; });
-          // console.log("Full attribute map:", JSON.stringify(attrMap));
-        }
-
-        // grouped product 맵 (SKU → REST data)
-        const groupedRestMap = {};
-        groupedRestItems.forEach((p) => { groupedRestMap[p.sku] = p; });
-
-        // product_links 맵
-        const linksMap = {};
-        groupedRestItems.forEach((p) => {
-          linksMap[p.sku] = (p.product_links || [])
-            .filter((l) => l.link_type === "associated")
-            .map((l) => l.linked_product_sku);
-        });
-
-        // 3. REST: linked simple 상품 일괄 조회 (이미지)
-        const allLinkedSkus = [...new Set(Object.values(linksMap).flat())];
-        const skuValue = allLinkedSkus.join(",");
-        const simpleRes = await fetch(
-          `/rest/V1/products?searchCriteria[pageSize]=500&searchCriteria[filterGroups][0][filters][0][field]=sku&searchCriteria[filterGroups][0][filters][0][value]=${skuValue}&searchCriteria[filterGroups][0][filters][0][conditionType]=in`,
-          { headers }
-        );
-        const simpleData = await simpleRes.json();
-        const simpleProducts = simpleData?.items || [];
-
-        // SKU → { images[] } 맵
-        const simpleMap = {};
-        simpleProducts.forEach((p) => {
-          const images = (p.media_gallery_entries || [])
-            .filter((e) => !e.disabled && e.file && !e.file.includes("placeholder"))
-            .slice(0, 4)
-            .map((e) => `${BASE}${e.file}`);
-          simpleMap[p.sku] = images;
-        });
-
-        // 4. 최종 상품 데이터 조합
-        const mapped = groupedItems
-          .filter((p) => p.stock_status === "IN_STOCK")
-          .map((p) => {
-            const restData = groupedRestMap[p.sku];
-            const attrs = restData?.custom_attributes || [];
-            const attr = (code) => attrs.find((a) => a.attribute_code === code)?.value || "";
-
-            const linkedSkus = linksMap[p.sku] || [];
-            const colors = linkedSkus
-              .map((sku) => ({
-                name: sku.startsWith(p.sku + "-") ? sku.slice(p.sku.length + 1) : sku,
-                images: simpleMap[sku] || [],
-              }))
-              .filter((c) => c.images.length > 0);
-
-            return {
-              id: p.sku,
-              name: p.name,
-              price: p.price_range?.minimum_price?.regular_price?.value ?? 0,
-              currency: p.price_range?.minimum_price?.regular_price?.currency ?? "USD",
-              eta: (() => {
-                const d = attr("preorder_date");
-                if (!d) return "";
-                const date = new Date(d);
-                return isNaN(date) ? d : date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
-              })(),
-              pack: (() => {
-                const sizes = attr("prepack_code"); // "S,M,L"
-                const ratios = attr("prepack");     // "3,2,1"
-                if (!ratios) return "";
-                if (sizes) {
-                  const s = sizes.split(",");
-                  const r = ratios.split(",");
-                  return s.map((sz, i) => `${sz.trim()}:${r[i]?.trim() || ""}`).join(" / ");
-                }
-                return ratios.replace(/,/g, "-");
-              })(),
-              piecesPerPack: (() => {
-                const ratios = attr("prepack"); // "3,2,1"
-                if (!ratios) return 1;
-                return ratios.split(",").reduce((sum, r) => sum + (parseInt(r.trim()) || 0), 0) || 1;
-              })(),
-              colors,
-            };
-          });
-
+        const res = await fetch("/api/products");
+        const data = await res.json();
+        const mapped = data?.products || [];
         setProducts(mapped);
-        // 캐시 저장
         try {
           localStorage.setItem("products_cache", JSON.stringify({ data: mapped, ts: Date.now() }));
         } catch {}
       } catch (err) {
-        console.error("Magento load error:", err);
+        console.error("Product load error:", err);
       } finally {
         setLoading(false);
       }

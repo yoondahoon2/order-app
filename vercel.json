@@ -1,6 +1,0 @@
-{
-  "rewrites": [
-    { "source": "/graphql", "destination": "https://www.editbynine.com/graphql" },
-    { "source": "/rest/:path*", "destination": "https://www.editbynine.com/rest/:path*" }
-  ]
-}

@@ -1,8 +1,9 @@
 // Minimal service worker — required so Chrome shows "Install app" prompt.
 // Cache-first for static assets, network-first for /api/* and HTML so users always get fresh data.
 
-const CACHE = "ebn-order-v1";
-const STATIC = ["/", "/manifest.webmanifest", "/logo.png", "/icon-192.png", "/icon-512.png", "/apple-touch-icon.png"];
+const CACHE = "ebn-order-v2";
+// Do NOT pre-cache "/" — HTML must always be fresh so theme/font changes propagate.
+const STATIC = ["/manifest.webmanifest", "/logo.png", "/icon-192.png", "/icon-512.png", "/apple-touch-icon.png"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(STATIC)).then(() => self.skipWaiting()));

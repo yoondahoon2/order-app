@@ -126,16 +126,29 @@ function shape(node, atsMap) {
       const genericImgs = decodedImgs.filter((d) => !isColorTagged(d.key)).map((d) => d.url);
 
       const imgs = [];
-      // Prefer variant's own image (most accurate)
-      if (v.image?.url) imgs.push(v.image.url);
+      // Prefer variant's own image — but only if it isn't tagged with a DIFFERENT color
+      // (Shopify variant.image often points to the wrong color when not manually set.)
+      if (v.image?.url) {
+        const vKey = decodeFileName(v.image.url);
+        const mentionsOtherColor = allColorSlugs.some(
+          (cs) => cs && cs !== colorSlug && vKey.includes(`${style}${cs}`)
+        );
+        if (!mentionsOtherColor) imgs.push(v.image.url);
+      }
       // Then any product images whose filename matches this color
       matched.forEach((u) => { if (!imgs.includes(u)) imgs.push(u); });
       // If no color-specific matches existed at all, fall back to generic (uncolored) imgs
       if (matched.length === 0) {
         genericImgs.forEach((u) => { if (!imgs.includes(u)) imgs.push(u); });
       }
-      // Final fallback to featuredImage
-      if (imgs.length === 0 && featured) imgs.push(featured);
+      // Final fallback to featuredImage (only if it's not tagged with another color)
+      if (imgs.length === 0 && featured) {
+        const fKey = decodeFileName(featured);
+        const featuredOther = allColorSlugs.some(
+          (cs) => cs && cs !== colorSlug && fKey.includes(`${style}${cs}`)
+        );
+        if (!featuredOther) imgs.push(featured);
+      }
 
       return { name: colorName, ats, images: imgs.slice(0, 4) };
     })

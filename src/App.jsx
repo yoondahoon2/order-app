@@ -25,13 +25,14 @@ export default function App() {
   });
 
   useEffect(() => {
+    const CACHE_KEY = "products_cache_v3"; // bump to invalidate stale empty/error caches
     async function loadProducts() {
-      // 캐시 확인 (5분 TTL)
+      // 캐시 확인 (5분 TTL) — 비어있으면 캐시 무시하고 fresh fetch
       try {
-        const cached = localStorage.getItem("products_cache");
+        const cached = localStorage.getItem(CACHE_KEY);
         if (cached) {
           const { data, ts } = JSON.parse(cached);
-          if (Date.now() - ts < 5 * 60 * 1000) {
+          if (Date.now() - ts < 5 * 60 * 1000 && Array.isArray(data) && data.length > 0) {
             setProducts(data);
             setLoading(false);
             return;
@@ -40,12 +41,14 @@ export default function App() {
       } catch {}
 
       try {
-        const res = await fetch("/api/products");
+        const res = await fetch("/api/products", { cache: "no-store" });
         const data = await res.json();
         const mapped = data?.products || [];
         setProducts(mapped);
         try {
-          localStorage.setItem("products_cache", JSON.stringify({ data: mapped, ts: Date.now() }));
+          if (mapped.length > 0) {
+            localStorage.setItem(CACHE_KEY, JSON.stringify({ data: mapped, ts: Date.now() }));
+          }
         } catch {}
       } catch (err) {
         console.error("Product load error:", err);

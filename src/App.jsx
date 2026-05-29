@@ -247,12 +247,12 @@ export default function App() {
                         <div
                           onClick={() => setSelectedColors((prev) => ({ ...prev, [p.id]: i }))}
                           style={{
-                            flex: 1, fontSize: 12, fontWeight: i === colorIdx ? 700 : 400,
-                            color: i === colorIdx ? "#111" : "#666",
-                            cursor: "pointer", textDecoration: i === colorIdx ? "underline" : "none",
+                            flex: 1, fontSize: 12, fontWeight: 500,
+                            color: i === colorIdx ? "#111" : "#888",
+                            cursor: "pointer",
                           }}
                         >
-                          {c.name || p.name}
+                          {i === colorIdx ? "● " : "○ "}{c.name || p.name}
                         </div>
                         {/* +/- 수량 조절 */}
                         {qty > 0 ? (

@@ -85,6 +85,19 @@ function shape(node, atsMap) {
   const productImgs = (node.images?.edges || []).map((e) => e.node.url);
   const featured = node.featuredImage?.url;
 
+  // Decode Shopify CDN filename (spaces/parens encoded as _20_, _28_, _29_, etc.)
+  // so we can match images to the correct color variant.
+  const decodeFileName = (url) => {
+    try {
+      const file = url.split("/").pop().split("?")[0];
+      return file
+        .replace(/_([0-9a-fA-F]{2})_/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, "");
+    } catch { return ""; }
+  };
+  const decodedImgs = productImgs.map((u) => ({ url: u, key: decodeFileName(u) }));
+
   // Filter variants by Style-Master ATS (truth source). Keep only colors with ATS > 0.
   const variants = (node.variants?.edges || []).map((e) => e.node);
   const colors = variants
@@ -92,9 +105,22 @@ function shape(node, atsMap) {
       const colorOpt = (v.selectedOptions || []).find((o) => /color/i.test(o.name));
       const colorName = colorOpt?.value || v.title || "";
       const ats = atsMap[lookupKey(style, colorName)] ?? 0;
+      const colorSlug = colorName.toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+      // Match images that belong to THIS color only.
+      // Filename pattern: <STYLE>_<COLOR>_<n>.jpg (e.g. TT8461_WHITE_(1).jpg → TT8461WHITE1)
+      const matched = colorSlug
+        ? decodedImgs.filter((d) => d.key.includes(`${style}${colorSlug}`)).map((d) => d.url)
+        : [];
+
       const imgs = [];
+      // Prefer variant's own image (most accurate)
       if (v.image?.url) imgs.push(v.image.url);
-      productImgs.forEach((u) => { if (!imgs.includes(u)) imgs.push(u); });
+      // Then any product images whose filename matches this color
+      matched.forEach((u) => { if (!imgs.includes(u)) imgs.push(u); });
+      // Fall back to featuredImage ONLY if we have nothing else (no color contamination)
+      if (imgs.length === 0 && featured) imgs.push(featured);
+
       return { name: colorName, ats, images: imgs.slice(0, 4) };
     })
     .filter((c) => c.ats >= MIN_ATS && c.images.length > 0);

@@ -250,9 +250,19 @@ export default function App() {
                             flex: 1, fontSize: 12, fontWeight: 500,
                             color: i === colorIdx ? "#111" : "#888",
                             cursor: "pointer",
+                            display: "flex", alignItems: "center", gap: 6,
                           }}
                         >
-                          {i === colorIdx ? "● " : "○ "}{c.name || p.name}
+                          <span
+                            style={{
+                              display: "inline-block",
+                              width: 8, height: 8, borderRadius: "50%",
+                              border: "1.5px solid " + (i === colorIdx ? "#111" : "#888"),
+                              background: i === colorIdx ? "#111" : "transparent",
+                              flexShrink: 0,
+                            }}
+                          />
+                          {c.name || p.name}
                         </div>
                         {/* +/- 수량 조절 */}
                         {qty > 0 ? (

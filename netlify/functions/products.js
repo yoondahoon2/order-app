@@ -113,12 +113,28 @@ function shape(node, atsMap) {
         ? decodedImgs.filter((d) => d.key.includes(`${style}${colorSlug}`)).map((d) => d.url)
         : [];
 
+      // Detect product images that mention ANY color in the product (so we can tell
+      // "color-specific" images from generic ones like CD8345_SIDE_PP.jpg).
+      const allColorSlugs = variants
+        .map((vv) => {
+          const co = (vv.selectedOptions || []).find((o) => /color/i.test(o.name));
+          return (co?.value || vv.title || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+        })
+        .filter(Boolean);
+      const isColorTagged = (key) =>
+        allColorSlugs.some((cs) => cs && key.includes(`${style}${cs}`));
+      const genericImgs = decodedImgs.filter((d) => !isColorTagged(d.key)).map((d) => d.url);
+
       const imgs = [];
       // Prefer variant's own image (most accurate)
       if (v.image?.url) imgs.push(v.image.url);
       // Then any product images whose filename matches this color
       matched.forEach((u) => { if (!imgs.includes(u)) imgs.push(u); });
-      // Fall back to featuredImage ONLY if we have nothing else (no color contamination)
+      // If no color-specific matches existed at all, fall back to generic (uncolored) imgs
+      if (matched.length === 0) {
+        genericImgs.forEach((u) => { if (!imgs.includes(u)) imgs.push(u); });
+      }
+      // Final fallback to featuredImage
       if (imgs.length === 0 && featured) imgs.push(featured);
 
       return { name: colorName, ats, images: imgs.slice(0, 4) };

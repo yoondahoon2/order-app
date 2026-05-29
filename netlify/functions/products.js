@@ -167,13 +167,13 @@ exports.handler = async () => {
       return { statusCode: 502, headers: cors, body: JSON.stringify({ error: "Shopify GraphQL error", detail: newInData.errors }) };
     }
 
-    // Best-sellers: query in chunks (handle prefix match). Shopify handles are lowercase.
-    const bsStyles = (bs.styles || []).map((s) => s.toLowerCase());
+    // Best-sellers: query by variant SKU prefix (style is in SKU, not handle). Chunked OR query.
+    const bsStyles = (bs.styles || []).map((s) => s.toUpperCase());
     const chunks = [];
-    for (let i = 0; i < bsStyles.length; i += 15) chunks.push(bsStyles.slice(i, i + 15));
+    for (let i = 0; i < bsStyles.length; i += 10) chunks.push(bsStyles.slice(i, i + 10));
     const bsResults = await Promise.all(
       chunks.map((chunk) => {
-        const ors = chunk.map((h) => `handle:${h}*`).join(" OR ");
+        const ors = chunk.map((s) => `sku:${s}*`).join(" OR ");
         return gqlFetch(`${baseFilter} AND (${ors})`);
       })
     );

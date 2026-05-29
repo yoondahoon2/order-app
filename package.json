@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "extract-inventory": "node _extract_inventory.cjs"
+    "extract-inventory": "node _extract_inventory.cjs",
+    "extract-bestsellers": "node _extract_bestsellers.cjs"
   },
   "dependencies": {
     "csv-parse": "^6.2.1",

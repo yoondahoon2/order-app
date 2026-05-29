@@ -6,12 +6,15 @@
 // Why not Shopify inventory? FRP→Shopify sync only pushes bal_qty (on-hand) — preorder
 // WIP-SO ATS is not reflected there. Style Master CSV is the truth source.
 //
-// Filters: 14-day publish window + has-image + has-ATS-per-color + F-suffix excluded + needs-model-shoot excluded.
+// Filters: (14-day publish window OR best-seller style) + has-image + has-ATS≥18-per-color
+//          + F-suffix excluded + needs-model-shoot excluded.
 
 const SHOP = process.env.SHOPIFY_SHOP_DOMAIN || "edit-by-nine.myshopify.com";
 const TOKEN = process.env.SHOPIFY_ADMIN_TOKEN;
 const API_VERSION = "2024-10";
 const INVENTORY_URL = process.env.INVENTORY_URL || "https://editbynine.netlify.app/inventory.json";
+const BESTSELLERS_URL = process.env.BESTSELLERS_URL || "https://editbynine.netlify.app/best_sellers.json";
+const MIN_ATS = 18;
 
 const QUERY = `
   query NewInProducts($query: String!) {
@@ -94,7 +97,7 @@ function shape(node, atsMap) {
       productImgs.forEach((u) => { if (!imgs.includes(u)) imgs.push(u); });
       return { name: colorName, ats, images: imgs.slice(0, 4) };
     })
-    .filter((c) => c.ats > 0 && c.images.length > 0);
+    .filter((c) => c.ats >= MIN_ATS && c.images.length > 0);
 
   return {
     id: style,
@@ -120,6 +123,17 @@ async function fetchInventoryMap() {
   }
 }
 
+async function fetchBestsellers() {
+  try {
+    const r = await fetch(BESTSELLERS_URL, { cache: "no-store" });
+    if (!r.ok) return { styles: [], error: `best_sellers.json ${r.status}` };
+    const j = await r.json();
+    return { styles: j.styles || [], source: j.source, generatedAt: j.generatedAt };
+  } catch (e) {
+    return { styles: [], error: e.message };
+  }
+}
+
 exports.handler = async () => {
   const cors = {
     "Content-Type": "application/json",
@@ -132,23 +146,55 @@ exports.handler = async () => {
   }
 
   const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  const queryString = `status:active AND published_status:published AND published_at:>${cutoff} AND -tag:needs-model-shoot AND -tag:hidden`;
+  const baseFilter = `status:active AND published_status:published AND -tag:needs-model-shoot AND -tag:hidden`;
+  const newInQuery = `${baseFilter} AND published_at:>${cutoff}`;
+
+  const gqlFetch = (queryString) =>
+    fetch(`https://${SHOP}/admin/api/${API_VERSION}/graphql.json`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": TOKEN },
+      body: JSON.stringify({ query: QUERY, variables: { query: queryString } }),
+    }).then((r) => r.json());
 
   try {
-    const [shopRes, inv] = await Promise.all([
-      fetch(`https://${SHOP}/admin/api/${API_VERSION}/graphql.json`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": TOKEN },
-        body: JSON.stringify({ query: QUERY, variables: { query: queryString } }),
-      }),
+    const [newInData, inv, bs] = await Promise.all([
+      gqlFetch(newInQuery),
       fetchInventoryMap(),
+      fetchBestsellers(),
     ]);
-    const data = await shopRes.json();
-    if (data.errors) {
-      return { statusCode: 502, headers: cors, body: JSON.stringify({ error: "Shopify GraphQL error", detail: data.errors }) };
+
+    if (newInData.errors) {
+      return { statusCode: 502, headers: cors, body: JSON.stringify({ error: "Shopify GraphQL error", detail: newInData.errors }) };
     }
-    const edges = data?.data?.products?.edges || [];
-    const products = edges
+
+    // Best-sellers: query in chunks (handle prefix match). Shopify handles are lowercase.
+    const bsStyles = (bs.styles || []).map((s) => s.toLowerCase());
+    const chunks = [];
+    for (let i = 0; i < bsStyles.length; i += 15) chunks.push(bsStyles.slice(i, i + 15));
+    const bsResults = await Promise.all(
+      chunks.map((chunk) => {
+        const ors = chunk.map((h) => `handle:${h}*`).join(" OR ");
+        return gqlFetch(`${baseFilter} AND (${ors})`);
+      })
+    );
+
+    const allEdges = [...(newInData?.data?.products?.edges || [])];
+    for (const r of bsResults) {
+      if (r.errors) continue;
+      allEdges.push(...(r?.data?.products?.edges || []));
+    }
+
+    // Dedupe by node.id
+    const seen = new Set();
+    const uniq = [];
+    for (const e of allEdges) {
+      const id = e?.node?.id;
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      uniq.push(e);
+    }
+
+    const products = uniq
       .map((e) => shape(e.node, inv.ats))
       .filter((p) => p.id && !/F$/.test(p.id))
       .filter((p) => p.colors.length > 0);
@@ -159,9 +205,14 @@ exports.handler = async () => {
       body: JSON.stringify({
         products,
         cutoff,
+        minAts: MIN_ATS,
         inventorySource: inv.source,
         inventoryGeneratedAt: inv.generatedAt,
         inventoryError: inv.error,
+        bestsellersSource: bs.source,
+        bestsellersGeneratedAt: bs.generatedAt,
+        bestsellersError: bs.error,
+        bestsellersCount: bsStyles.length,
       }),
     };
   } catch (err) {

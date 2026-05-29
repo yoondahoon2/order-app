@@ -357,9 +357,19 @@ export default function App() {
                 return sum + (product ? product.piecesPerPack * qty : qty);
               }, 0);
               return (
-                <div style={{ padding: "12px 16px", borderTop: "2px solid #eee", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontWeight: 600, fontSize: 14, color: "#555" }}>Total ({totalPacks} {totalPacks === 1 ? "pack" : "packs"} / {totalPcs} pcs)</span>
-                  <span style={{ fontWeight: 700, fontSize: 17, color: "#111" }}>${total.toFixed(2)}</span>
+                <div style={{ borderTop: "2px solid #eee", paddingBottom: "env(safe-area-inset-bottom)" }}>
+                  <div style={{ padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontWeight: 600, fontSize: 14, color: "#555" }}>Total ({totalPacks} {totalPacks === 1 ? "pack" : "packs"} / {totalPcs} pcs)</span>
+                    <span style={{ fontWeight: 700, fontSize: 17, color: "#111" }}>${total.toFixed(2)}</span>
+                  </div>
+                  <div style={{ padding: "0 16px 12px" }}>
+                    <button
+                      onClick={() => { setShowCart(false); setShowRecipients(true); }}
+                      style={{ width: "100%", height: 44, background: "#25D366", color: "white", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: 15 }}
+                    >
+                      Send Order via WhatsApp
+                    </button>
+                  </div>
                 </div>
               );
             })()}

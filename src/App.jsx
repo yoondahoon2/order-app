@@ -153,7 +153,7 @@ export default function App() {
       />
 
       {/* Products */}
-      <div style={{ display: "grid", gap: 16, paddingBottom: 80 }}>
+      <div style={{ display: "grid", gap: 16, paddingBottom: "calc(80px + env(safe-area-inset-bottom))" }}>
         {loading && products.length === 0 && (
           [1,2,3].map((i) => (
             <div key={i} style={{ borderRadius: 8, overflow: "hidden", background: "#fff", border: "1px solid #ddd" }}>
@@ -281,7 +281,7 @@ export default function App() {
       </div>
 
       {/* WhatsApp 버튼 */}
-      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "white", padding: 10, borderTop: "1px solid #eee" }}>
+      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "white", padding: 10, paddingBottom: "calc(10px + env(safe-area-inset-bottom))", borderTop: "1px solid #eee" }}>
         <button
           onClick={handleSendButton}
           style={{ width: "100%", height: 44, background: "#25D366", color: "white", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: 15 }}

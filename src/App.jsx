@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
 
+// 주문 수신자 (number = WhatsApp/SMS 공용, 국가코드 포함)
 const RECIPIENTS = [
   { name: "Kevin",  number: "12138002184", avatar: "/kevin.png" },
   { name: "Laura",  number: "12138003519", avatar: "/laura.png" },
@@ -12,8 +13,9 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [selectedColors, setSelectedColors] = useState({});
   const [lightbox, setLightbox] = useState(null); // { productId, imgIdx }
-  const [showRecipients, setShowRecipients] = useState(false);
   const [showCart, setShowCart] = useState(false);
+  const [showRecipients, setShowRecipients] = useState(false);
+  const [selectedRecipient, setSelectedRecipient] = useState(null); // 채널 선택 단계
 
   const [cart, setCart] = useState(() => {
     try {
@@ -103,20 +105,47 @@ export default function App() {
     return lines;
   };
 
-  const sendOrderToWhatsApp = (recipient) => {
+  // 주문 본문 (줄바꿈 = \n) — 공통
+  const buildOrderMessage = () => {
     const lines = buildOrderLines();
-    if (lines.length === 0) return;
-    const header = `Hello! 👋%0A%0AI'd like to place an order:%0A%0A`;
-    const body = lines.map(l => `📦 ${l}`).join("%0A");
-    const footer = `%0A%0AThank you!`;
-    window.open(`https://wa.me/${recipient.number}?text=${header}${body}${footer}`, "_blank");
-    setCart({});
-    setShowRecipients(false);
+    return (
+      "Hello! I'd like to place an order:\n\n" +
+      lines.map(l => `- ${l}`).join("\n") +
+      "\n\nThank you!"
+    );
   };
 
-  const handleSendButton = () => {
-    const lines = buildOrderLines();
-    if (lines.length === 0) { alert("Please add items to your cart first."); return; }
+  const closeRecipients = () => {
+    setShowRecipients(false);
+    setSelectedRecipient(null);
+  };
+
+  // WhatsApp 발송
+  const sendOrderToWhatsApp = (recipient) => {
+    const text = encodeURIComponent(buildOrderMessage());
+    window.open(`https://wa.me/${recipient.number}?text=${text}`, "_blank");
+    setCart({});
+    closeRecipients();
+  };
+
+  // 문자(SMS) 발송 — 기기 감지: iOS는 본문 구분자 '&', 안드로이드/기타는 '?'
+  const sendOrderViaSMS = (recipient) => {
+    const encodedBody = encodeURIComponent(buildOrderMessage());
+    const ua = navigator.userAgent || navigator.vendor || "";
+    const isApple =
+      /iPhone|iPad|iPod/i.test(ua) ||
+      (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1); // iPadOS 13+ 데스크톱 UA 대응
+    const separator = isApple ? "&" : "?";
+    window.location.href = `sms:+${recipient.number}${separator}body=${encodedBody}`;
+    setCart({});
+    closeRecipients();
+  };
+
+  // 주문 버튼 → 카트 확인 후 수신자 선택 모달 열기 (세일즈맨 먼저 선택)
+  const openRecipients = () => {
+    if (buildOrderLines().length === 0) { alert("Please add items to your cart first."); return; }
+    setSelectedRecipient(null);
+    setShowCart(false);
     setShowRecipients(true);
   };
 
@@ -290,13 +319,13 @@ export default function App() {
         })}
       </div>
 
-      {/* WhatsApp 버튼 */}
+      {/* 주문 전송 버튼 */}
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "white", padding: 10, paddingBottom: "calc(10px + env(safe-area-inset-bottom))", borderTop: "1px solid #eee" }}>
         <button
-          onClick={handleSendButton}
-          style={{ width: "100%", height: 44, background: "#25D366", color: "white", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: 15 }}
+          onClick={openRecipients}
+          style={{ width: "100%", height: 44, background: "#0F1B4C", color: "white", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: 15 }}
         >
-          Send Order via WhatsApp
+          Send Order
         </button>
       </div>
 
@@ -374,10 +403,10 @@ export default function App() {
                   </div>
                   <div style={{ padding: "0 16px 12px" }}>
                     <button
-                      onClick={() => { setShowCart(false); setShowRecipients(true); }}
-                      style={{ width: "100%", height: 44, background: "#25D366", color: "white", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: 15 }}
+                      onClick={openRecipients}
+                      style={{ width: "100%", height: 44, background: "#0F1B4C", color: "white", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: 15 }}
                     >
-                      Send Order via WhatsApp
+                      Send Order
                     </button>
                   </div>
                 </div>
@@ -387,10 +416,10 @@ export default function App() {
         </div>
       )}
 
-      {/* 수신자 선택 모달 */}
+      {/* 주문 발송 모달: 1) 세일즈맨 선택 → 2) WhatsApp / Text 선택 */}
       {showRecipients && (
         <div
-          onClick={() => setShowRecipients(false)}
+          onClick={closeRecipients}
           style={{
             position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)",
             display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200,
@@ -404,28 +433,65 @@ export default function App() {
               display: "flex", flexDirection: "column", alignItems: "center",
             }}
           >
-            <img src="/logo.png" alt="Edit By Nine" style={{ height: 52, objectFit: "contain", marginBottom: 24 }} />
-            {RECIPIENTS.map((r) => (
-              <div
-                key={r.name}
-                onClick={() => sendOrderToWhatsApp(r)}
-                style={{
-                  display: "flex", alignItems: "center", gap: 16,
-                  width: "100%", padding: "12px 8px", cursor: "pointer",
-                  borderRadius: 10, marginBottom: 4,
-                  transition: "background 0.15s",
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = "#f5f5f5"}
-                onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
-              >
+            <img src="/logo.png" alt="Edit By Nine" style={{ height: 52, objectFit: "contain", marginBottom: 8 }} />
+
+            {!selectedRecipient ? (
+              <>
+                {/* 1단계: 세일즈맨 선택 */}
+                <div style={{ fontSize: 13, color: "#888", marginBottom: 20 }}>Choose your sales rep</div>
+                {RECIPIENTS.map((r) => (
+                  <div
+                    key={r.name}
+                    onClick={() => setSelectedRecipient(r)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 16,
+                      width: "100%", padding: "12px 8px", cursor: "pointer",
+                      borderRadius: 10, marginBottom: 4,
+                      transition: "background 0.15s",
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "#f5f5f5"}
+                    onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                  >
+                    <img
+                      src={r.avatar}
+                      alt={r.name}
+                      style={{ width: 56, height: 56, borderRadius: "50%", objectFit: "cover", border: "2px solid #eee", flexShrink: 0 }}
+                    />
+                    <span style={{ fontWeight: 700, fontSize: 18, color: "#111", letterSpacing: 0.5 }}>{r.name}</span>
+                  </div>
+                ))}
+              </>
+            ) : (
+              <>
+                {/* 2단계: 발송 방법 선택 */}
                 <img
-                  src={r.avatar}
-                  alt={r.name}
-                  style={{ width: 56, height: 56, borderRadius: "50%", objectFit: "cover", border: "2px solid #eee", flexShrink: 0 }}
+                  src={selectedRecipient.avatar}
+                  alt={selectedRecipient.name}
+                  style={{ width: 64, height: 64, borderRadius: "50%", objectFit: "cover", border: "2px solid #eee", marginBottom: 8 }}
                 />
-                <span style={{ fontWeight: 700, fontSize: 18, color: "#111", letterSpacing: 0.5 }}>{r.name}</span>
-              </div>
-            ))}
+                <div style={{ fontWeight: 700, fontSize: 18, color: "#111", marginBottom: 4 }}>{selectedRecipient.name}</div>
+                <div style={{ fontSize: 13, color: "#888", marginBottom: 20 }}>How would you like to send?</div>
+
+                <button
+                  onClick={() => sendOrderToWhatsApp(selectedRecipient)}
+                  style={{ width: "100%", height: 46, background: "#25D366", color: "white", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: 15, marginBottom: 10 }}
+                >
+                  WhatsApp
+                </button>
+                <button
+                  onClick={() => sendOrderViaSMS(selectedRecipient)}
+                  style={{ width: "100%", height: 46, background: "#0F1B4C", color: "white", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: 15 }}
+                >
+                  Text Message (SMS)
+                </button>
+                <button
+                  onClick={() => setSelectedRecipient(null)}
+                  style={{ marginTop: 14, background: "none", border: "none", color: "#888", fontSize: 13, cursor: "pointer" }}
+                >
+                  ← Back
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
